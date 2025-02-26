@@ -15,12 +15,17 @@ app.use(express.static('public'));
 
 // Cargar credenciales
 const loadCredentials = () => {
-    const credentialsPath = path.join(__dirname, 'credentials.json');
-    if (!fs.existsSync(credentialsPath)) {
-        console.error('No se encontró credentials.json. Asegúrate de configurarlo.');
+    const credentialsEnv = process.env.GOOGLE_CREDENTIALS;
+    if (!credentialsEnv) {
+        console.error('No se encontró GOOGLE_CREDENTIALS en las variables de entorno. Asegúrate de configurarlo.');
         process.exit(1);
     }
-    return JSON.parse(fs.readFileSync(credentialsPath));
+    try {
+        return JSON.parse(credentialsEnv);
+    } catch (error) {
+        console.error('Error al parsear GOOGLE_CREDENTIALS:', error);
+        process.exit(1);
+    }
 };
 
 // Configuración de autenticación para Google Sheets
