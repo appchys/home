@@ -17,7 +17,7 @@ app.use(express.static('public'));
 const loadCredentials = () => {
     const credentialsEnv = process.env.GOOGLE_CREDENTIALS;
     if (!credentialsEnv) {
-        console.error('No se encontró GOOGLE_CREDENTIALS en las variables de entorno. Asegúrate de configurarlo.');
+        console.error('No se encontró GOOGLE_CREDENTIALS en las variables de entorno.');
         process.exit(1);
     }
     try {
