@@ -1,5 +1,5 @@
 // URL base del servidor
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = ''; // Usa rutas relativas
 
 // Cargar departamentos
 async function loadDepartamentos() {
