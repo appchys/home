@@ -1,0 +1,39 @@
+.card {
+    width: 100%;
+    max-width: 400px;
+    margin: 20px auto;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.card:hover {
+    transform: scale(1.02);
+}
+.card-img-top {
+    height: 200px;
+    object-fit: cover;
+}
+.modal-img-large {
+    max-height: 80vh;
+    width: 100%;
+    object-fit: contain;
+}
+.thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 2px solid transparent;
+    margin-bottom: 10px;
+}
+.thumbnail.active {
+    border-color: #007bff;
+}
+.photo-sidebar {
+    max-height: 80vh;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+.details-container {
+    padding-left: 10px;
+    flex: 1;
+}
