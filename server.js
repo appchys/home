@@ -96,7 +96,7 @@ app.get('/api/fotos/:id_home', async (req, res) => {
 });
 
 // Ruta para servir imágenes de Google Drive como proxy
-app.get('/proxy-image', async (req, res) => {
+app.get('/api/proxy-image', async (req, res) => {
     console.log('Solicitud recibida en /proxy-image:', req.query.url);
     const { url } = req.query;
     const defaultImage = 'https://drive.google.com/uc?export=view&id=1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD';
