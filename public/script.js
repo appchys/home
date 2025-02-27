@@ -13,7 +13,7 @@ async function loadDepartamentos() {
             const deptoJson = JSON.stringify(depto).replace(/"/g, '&quot;'); // Escapar comillas correctamente
             const card = `
                 <div class="card" onclick="loadPhotos('${depto.id_home}', '${depto.descripción}', '${deptoJson}')">
-                    <img src="${BASE_URL}/proxy-image?url=${encodeURIComponent(depto.url_foto)}" 
+                    <img src="${BASE_URL}/api/proxy-image?url=${encodeURIComponent(depto.url_foto)}" class="card-img-top" alt="${depto.descripción}">
                          class="card-img-top" alt="${depto.descripción}">
                     <div class="card-body">
                         <h5 class="card-title">${depto.descripción}</h5>
