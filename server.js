@@ -97,6 +97,7 @@ app.get('/api/fotos/:id_home', async (req, res) => {
 
 // Ruta para servir imágenes de Google Drive como proxy
 app.get('/proxy-image', async (req, res) => {
+    console.log('Solicitud recibida en /proxy-image:', req.query.url);
     const { url } = req.query;
     const defaultImage = 'https://drive.google.com/uc?export=view&id=1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD';
 
@@ -121,27 +122,14 @@ app.get('/proxy-image', async (req, res) => {
             url: imageUrl,
             method: 'GET',
             responseType: 'stream',
-            timeout: 10000, // 10 segundos, límite estándar en Vercel
-            maxRedirects: 5,
+            timeout: 10000,
         });
 
         res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
         response.data.pipe(res);
     } catch (error) {
         console.error('Error al obtener imagen:', error.message);
-        try {
-            const defaultResponse = await axios({
-                url: `https://drive.google.com/uc?export=download&id=1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD`,
-                method: 'GET',
-                responseType: 'stream',
-                timeout: 10000,
-            });
-            res.setHeader('Content-Type', defaultResponse.headers['content-type'] || 'image/jpeg');
-            defaultResponse.data.pipe(res);
-        } catch (defaultError) {
-            console.error('Error al cargar imagen por defecto:', defaultError.message);
-            res.status(500).send('Error al cargar la imagen');
-        }
+        res.status(500).send('Error al cargar la imagen');
     }
 });
 
