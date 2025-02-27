@@ -1,5 +1,5 @@
 // URL base del servidor
-const BASE_URL = ''; // Usa rutas relativas
+const BASE_URL = ''; // Rutas relativas en Vercel
 
 // Cargar departamentos
 async function loadDepartamentos() {
@@ -10,11 +10,12 @@ async function loadDepartamentos() {
         container.innerHTML = '';
 
         departamentos.forEach(depto => {
-            const deptoJson = JSON.stringify(depto).replace(/"/g, '&quot;'); // Escapar comillas correctamente
+            // Extraer el ID de la URL de Google Drive
+            const urlFotoMatch = depto.url_foto.match(/[-\w]{25,}/);
+            const imageId = urlFotoMatch ? urlFotoMatch[0] : '1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD'; // ID por defecto si falla
             const card = `
-                <div class="card" onclick="loadPhotos('${depto.id_home}', '${depto.descripción}', '${deptoJson}')">
-                    <img src="${BASE_URL}/api/proxy-image?url=${encodeURIComponent(depto.url_foto)}" class="card-img-top" alt="${depto.descripción}">
-                         class="card-img-top" alt="${depto.descripción}">
+                <div class="card" onclick="loadPhotos('${depto.id_home}', '${depto.descripción}', \`${JSON.stringify(depto).replace(/"/g, '"')}\`)">
+                    <img src="${BASE_URL}/api/image/${imageId}" class="card-img-top" alt="${depto.descripción}">
                     <div class="card-body">
                         <h5 class="card-title">${depto.descripción}</h5>
                         <p class="card-text"><strong>Precio:</strong> ${depto.precio}</p>
@@ -28,7 +29,7 @@ async function loadDepartamentos() {
     }
 }
 
-// Cargar fotos y detalles del departamento, abrir el modal
+// Cargar fotos del departamento y abrir el modal
 async function loadPhotos(idHome, descripcion, deptoJson) {
     try {
         const depto = JSON.parse(deptoJson);
@@ -41,17 +42,19 @@ async function loadPhotos(idHome, descripcion, deptoJson) {
         thumbnailContainer.innerHTML = '';
         detailsContainer.innerHTML = '';
 
-        // Mostrar miniaturas
         if (fotos.length === 0) {
             thumbnailContainer.innerHTML = '<p>No hay fotos disponibles.</p>';
             largeImage.src = '';
             largeImageDesc.textContent = '';
         } else {
             fotos.forEach((foto, index) => {
+                // Extraer el ID de la URL de Google Drive
+                const urlMatch = foto.url.match(/[-\w]{25,}/);
+                const imageId = urlMatch ? urlMatch[0] : '1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD'; // ID por defecto si falla
                 const thumbnail = `
-                    <img src="${BASE_URL}/proxy-image?url=${encodeURIComponent(foto.url)}" 
+                    <img src="${BASE_URL}/api/image/${imageId}" 
                          class="thumbnail ${index === 0 ? 'active' : ''}" 
-                         data-url="${foto.url}" 
+                         data-id="${imageId}" 
                          data-desc="${foto.descripción} - ${foto.fecha}"
                          onclick="showLargeImage(this)">
                 `;
@@ -59,12 +62,12 @@ async function loadPhotos(idHome, descripcion, deptoJson) {
             });
 
             if (fotos.length > 0) {
-                largeImage.src = `${BASE_URL}/proxy-image?url=${encodeURIComponent(fotos[0].url)}`;
+                const firstImageId = fotos[0].url.match(/[-\w]{25,}/)[0] || '1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD';
+                largeImage.src = `${BASE_URL}/api/image/${firstImageId}`;
                 largeImageDesc.textContent = `${fotos[0].descripción} - ${fotos[0].fecha}`;
             }
         }
 
-        // Mostrar detalles del departamento
         const contactoClean = depto.contacto.replace(/\D/g, '');
         const whatsappNumber = contactoClean.startsWith('593') ? contactoClean : `593${contactoClean}`;
         const whatsappMessage = encodeURIComponent("Hola, me gustaría más información sobre el departamento en alquiler");
@@ -81,9 +84,7 @@ async function loadPhotos(idHome, descripcion, deptoJson) {
             <a href="${whatsappLink}" target="_blank" class="btn btn-success btn-sm">Whatsapp</a>
         `;
 
-        // Abrir el modal
-        const modalElement = document.getElementById('photoModal');
-        const modal = new bootstrap.Modal(modalElement);
+        const modal = new bootstrap.Modal(document.getElementById('photoModal'));
         document.getElementById('photoModalLabel').textContent = `Fotos de ${descripcion}`;
         modal.show();
     } catch (error) {
@@ -99,11 +100,11 @@ function showLargeImage(thumbnail) {
 
     const largeImage = document.getElementById('large-image');
     const largeImageDesc = document.getElementById('large-image-desc');
-    largeImage.src = `${BASE_URL}/proxy-image?url=${encodeURIComponent(thumbnail.dataset.url)}`;
+    largeImage.src = `${BASE_URL}/api/image/${thumbnail.dataset.id}`;
     largeImageDesc.textContent = thumbnail.dataset.desc;
 }
 
-// Inicializar
+// Cargar departamentos al iniciar
 document.addEventListener('DOMContentLoaded', () => {
     loadDepartamentos();
 });

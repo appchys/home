@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const { google } = require('googleapis');
-const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,12 +25,16 @@ const loadCredentials = () => {
     }
 };
 
-// Configuración de autenticación para Google Sheets
+// Configuración de autenticación para Google Sheets y Drive
 const auth = new google.auth.GoogleAuth({
     credentials: loadCredentials(),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    scopes: [
+        'https://www.googleapis.com/auth/spreadsheets.readonly',
+        'https://www.googleapis.com/auth/drive.readonly' // Añadido para Drive
+    ],
 });
 const sheets = google.sheets({ version: 'v4', auth });
+const drive = google.drive({ version: 'v3', auth });
 
 const SPREADSHEET_ID = '1I8nFa8D_RmsoVxTYoH04mqaXshCp_DR0G6X4ez2lfYo';
 
@@ -95,40 +98,19 @@ app.get('/api/fotos/:id_home', async (req, res) => {
     }
 });
 
-// Ruta para servir imágenes de Google Drive como proxy
-app.get('/api/proxy-image', async (req, res) => {
-    console.log('Solicitud recibida en /proxy-image:', req.query.url);
-    const { url } = req.query;
-    const defaultImage = 'https://drive.google.com/uc?export=view&id=1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD';
-
-    let finalUrl = url && url.trim() !== '' ? url : defaultImage;
-
+// Ruta para obtener imágenes desde Google Drive usando la API
+app.get('/api/image/:id', async (req, res) => {
+    const fileId = req.params.id;
     try {
-        const drivePattern = /drive\.google\.com\/(?:file\/d\/|uc\?export=view&id=|[^\/]*id=)([a-zA-Z0-9_-]+)/;
-        const match = finalUrl.match(drivePattern);
-        let imageId = match ? match[1] : null;
-
-        if (!imageId) {
-            console.log('No se encontró ID de imagen válido, usando imagen por defecto');
-            finalUrl = defaultImage;
-            const defaultMatch = defaultImage.match(drivePattern);
-            imageId = defaultMatch ? defaultMatch[1] : null;
-        }
-
-        const imageUrl = `https://drive.google.com/uc?export=download&id=${imageId}`;
-        console.log(`Solicitando imagen: ${imageUrl}`);
-
-        const response = await axios({
-            url: imageUrl,
-            method: 'GET',
-            responseType: 'stream',
-            timeout: 10000,
-        });
-
+        console.log(`Solicitando imagen con ID: ${fileId}`);
+        const response = await drive.files.get(
+            { fileId, alt: 'media' },
+            { responseType: 'stream' }
+        );
         res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
         response.data.pipe(res);
     } catch (error) {
-        console.error('Error al obtener imagen:', error.message);
+        console.error('Error al obtener imagen de Drive:', error.message);
         res.status(500).send('Error al cargar la imagen');
     }
 });
