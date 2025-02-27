@@ -1,8 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const { google } = require('googleapis');
-const fs = require('fs');
-const path = require('path');
 const axios = require('axios');
 
 const app = express();
@@ -13,11 +11,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Cargar credenciales
+// Cargar credenciales desde variable de entorno
 const loadCredentials = () => {
     const credentialsEnv = process.env.GOOGLE_CREDENTIALS;
     if (!credentialsEnv) {
-        console.error('No se encontró GOOGLE_CREDENTIALS en las variables de entorno.');
+        console.error('No se encontró GOOGLE_CREDENTIALS en las variables de entorno. Asegúrate de configurarlo.');
         process.exit(1);
     }
     try {
@@ -39,33 +37,38 @@ const SPREADSHEET_ID = '1I8nFa8D_RmsoVxTYoH04mqaXshCp_DR0G6X4ez2lfYo';
 
 // Función genérica para obtener datos de una hoja
 async function getSheetData(sheetName) {
-    const sheetMeta = await sheets.spreadsheets.get({
-        spreadsheetId: SPREADSHEET_ID,
-        fields: 'sheets(properties,data.rowData.values)',
-    });
-    const sheet = sheetMeta.data.sheets.find(s => s.properties.title === sheetName);
-    const lastColumn = String.fromCharCode(65 + (sheet.properties.gridProperties.columnCount - 1));
+    try {
+        const sheetMeta = await sheets.spreadsheets.get({
+            spreadsheetId: SPREADSHEET_ID,
+            fields: 'sheets(properties,data.rowData.values)',
+        });
+        const sheet = sheetMeta.data.sheets.find(s => s.properties.title === sheetName);
+        const lastColumn = String.fromCharCode(65 + (sheet.properties.gridProperties.columnCount - 1));
 
-    const range = `${sheetName}!A1:${lastColumn}`;
-    const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range,
-    });
+        const range = `${sheetName}!A1:${lastColumn}`;
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range,
+        });
 
-    const rows = response.data.values;
-    if (!rows || rows.length < 2) {
-        throw new Error(`No se encontraron datos en la hoja ${sheetName}`);
+        const rows = response.data.values;
+        if (!rows || rows.length < 2) {
+            throw new Error(`No se encontraron datos en la hoja ${sheetName}`);
+        }
+
+        const headers = rows[0].map(h => h.toLowerCase().replace(/\s+/g, '_'));
+        const dataRows = rows.slice(1);
+
+        return dataRows.map(row =>
+            headers.reduce((obj, header, index) => {
+                obj[header] = row[index] || '';
+                return obj;
+            }, {})
+        );
+    } catch (error) {
+        console.error(`Error al obtener datos de ${sheetName}:`, error.message);
+        throw error;
     }
-
-    const headers = rows[0].map(h => h.toLowerCase().replace(/\s+/g, '_'));
-    const dataRows = rows.slice(1);
-
-    return dataRows.map(row =>
-        headers.reduce((obj, header, index) => {
-            obj[header] = row[index] || '';
-            return obj;
-        }, {})
-    );
 }
 
 // Ruta para obtener departamentos
@@ -97,19 +100,16 @@ app.get('/proxy-image', async (req, res) => {
     const { url } = req.query;
     const defaultImage = 'https://drive.google.com/uc?export=view&id=1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD';
 
-    if (!url || url.trim() === '') {
-        console.log('URL vacía, usando imagen por defecto');
-        url = defaultImage;
-    }
+    let finalUrl = url && url.trim() !== '' ? url : defaultImage;
 
     try {
         const drivePattern = /drive\.google\.com\/(?:file\/d\/|uc\?export=view&id=|[^\/]*id=)([a-zA-Z0-9_-]+)/;
-        const match = url.match(drivePattern);
+        const match = finalUrl.match(drivePattern);
         const imageId = match ? match[1] : null;
 
         if (!imageId) {
             console.log('No se encontró ID de imagen válido, usando imagen por defecto');
-            url = defaultImage;
+            finalUrl = defaultImage;
             const defaultMatch = defaultImage.match(drivePattern);
             imageId = defaultMatch ? defaultMatch[1] : null;
         }
@@ -126,11 +126,23 @@ app.get('/proxy-image', async (req, res) => {
         response.data.pipe(res);
     } catch (error) {
         console.error('Error al obtener imagen:', error.message);
-        res.status(500).send('Error al cargar la imagen');
+        try {
+            const defaultResponse = await axios({
+                url: `https://drive.google.com/uc?export=download&id=1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD`,
+                method: 'GET',
+                responseType: 'stream',
+                timeout: 15000,
+            });
+            res.setHeader('Content-Type', defaultResponse.headers['content-type']);
+            defaultResponse.data.pipe(res);
+        } catch (defaultError) {
+            console.error('Error al cargar imagen por defecto:', defaultError.message);
+            res.status(500).send('Error al cargar la imagen');
+        }
     }
 });
 
 // Iniciar servidor
 app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`Servidor corriendo en puerto ${PORT}`);
 });
