@@ -97,8 +97,9 @@ app.get('/proxy-image', async (req, res) => {
     const { url } = req.query;
     const defaultImage = 'https://drive.google.com/uc?export=view&id=1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD';
 
-    if (!url || url.trim() === '' || !url.includes('drive.google.com')) {
-        return res.redirect(`/proxy-image?url=${encodeURIComponent(defaultImage)}`);
+    if (!url || url.trim() === '') {
+        console.log('URL vacía, usando imagen por defecto');
+        url = defaultImage;
     }
 
     try {
@@ -107,7 +108,10 @@ app.get('/proxy-image', async (req, res) => {
         const imageId = match ? match[1] : null;
 
         if (!imageId) {
-            return res.redirect(`/proxy-image?url=${encodeURIComponent(defaultImage)}`);
+            console.log('No se encontró ID de imagen válido, usando imagen por defecto');
+            url = defaultImage;
+            const defaultMatch = defaultImage.match(drivePattern);
+            imageId = defaultMatch ? defaultMatch[1] : null;
         }
 
         const imageUrl = `https://drive.google.com/uc?export=download&id=${imageId}`;
@@ -115,14 +119,14 @@ app.get('/proxy-image', async (req, res) => {
             url: imageUrl,
             method: 'GET',
             responseType: 'stream',
-            timeout: 10000,
+            timeout: 15000,
         });
 
         res.setHeader('Content-Type', response.headers['content-type']);
         response.data.pipe(res);
     } catch (error) {
         console.error('Error al obtener imagen:', error.message);
-        res.redirect(`/proxy-image?url=${encodeURIComponent(defaultImage)}`);
+        res.status(500).send('Error al cargar la imagen');
     }
 });
 
