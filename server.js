@@ -105,7 +105,7 @@ app.get('/proxy-image', async (req, res) => {
     try {
         const drivePattern = /drive\.google\.com\/(?:file\/d\/|uc\?export=view&id=|[^\/]*id=)([a-zA-Z0-9_-]+)/;
         const match = finalUrl.match(drivePattern);
-        const imageId = match ? match[1] : null;
+        let imageId = match ? match[1] : null;
 
         if (!imageId) {
             console.log('No se encontró ID de imagen válido, usando imagen por defecto');
@@ -115,14 +115,17 @@ app.get('/proxy-image', async (req, res) => {
         }
 
         const imageUrl = `https://drive.google.com/uc?export=download&id=${imageId}`;
+        console.log(`Solicitando imagen: ${imageUrl}`);
+
         const response = await axios({
             url: imageUrl,
             method: 'GET',
             responseType: 'stream',
-            timeout: 15000,
+            timeout: 10000, // 10 segundos, límite estándar en Vercel
+            maxRedirects: 5,
         });
 
-        res.setHeader('Content-Type', response.headers['content-type']);
+        res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
         response.data.pipe(res);
     } catch (error) {
         console.error('Error al obtener imagen:', error.message);
@@ -131,9 +134,9 @@ app.get('/proxy-image', async (req, res) => {
                 url: `https://drive.google.com/uc?export=download&id=1Jab6uk5DsW8PD6FjH_8BTyx9NxFUYfZD`,
                 method: 'GET',
                 responseType: 'stream',
-                timeout: 15000,
+                timeout: 10000,
             });
-            res.setHeader('Content-Type', defaultResponse.headers['content-type']);
+            res.setHeader('Content-Type', defaultResponse.headers['content-type'] || 'image/jpeg');
             defaultResponse.data.pipe(res);
         } catch (defaultError) {
             console.error('Error al cargar imagen por defecto:', defaultError.message);
